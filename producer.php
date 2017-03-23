@@ -5,7 +5,7 @@ spl_autoload_register(function($class){
 
 try {
 	$cir = new CircleQueue('order.cancel.new', 60);
-	$cir -> enQueue(1490193800, ['order'=>'123456789']);
+	$cir -> enQueue(time()+200, ['order'=>time()]);
 } catch (Exception $e) {
 	die($e->getMessage());
 }

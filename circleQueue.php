@@ -16,11 +16,10 @@ class CircleQueue
 	public $times;
 	public $name;
 	public $redis;
+
 	public function __construct($name, $times='3600')
 	{
-		if (!$name) {
-			throw new Exception('Invalid Name');
-		}
+		!$name && $this-> _exception('Invalid Name');
 		$this->name = $name;
 		$this->times = $times;
 		$this->redis = new Redis();
@@ -33,7 +32,7 @@ class CircleQueue
 	{
 		if (!$this->redis->exists($this->name)) {
 			$field = [];
-			for ($i=1; $i <= $this->times ; $i++) {
+			for ($i=0; $i < $this->times ; $i++) {
 				$field[$i] = json_encode([]);
 			}
 			$this->redis->hMset($this->name, $field);
@@ -51,19 +50,37 @@ class CircleQueue
 	*/
 	public function enQueue($time, $data)
 	{
+		$newTask = ['order' => $data['order']];
+		# 当前轮询执行的节点
+		$current = $this->redis->get('current.point');
+
+		//相差秒数
 		$intersect = $time - time();
 		$intersect <= 0 && $this->_exception('Task time is have passed');
-		$circle = floor($intersect / $this->times);
-		$clock = $intersect % $this->times;
-		$newTask = [
-			'circle' => $circle,
-			'order' => $data['order']
-		];
-		echo $circle.PHP_EOL;
-		echo $clock;
-		$existsTask = json_decode($this->redis->hGet($this->name, $clock));
+
+		# 计算位置
+		if ($current + $intersect <= $this->times) {
+			$newTask['circle'] = 0;
+			$newTime = $current + $intersect;
+		} else {
+			$leftTime = $intersect - ($this->times - $current);
+
+			$circle = floor($leftTime / $this->times);
+			$newTime = $leftTime % $this->times;
+			if ($newTime > $current) {
+				++$circle;
+			}
+			$newTask['circle'] = $circle;
+		}
+
+		echo 'New Point:'.$newTime.PHP_EOL;
+/*		echo 'Current:'.$current.PHP_EOL;
+		echo '<pre>';
+		    print_r($newTask);
+*/
+	    $existsTask = json_decode($this->redis->hGet($this->name, $newTime));
 		$existsTask[] = $newTask;
-		$this->redis->hSet($this->name, $clock, json_encode($existsTask));
+		$this->redis->hSet($this->name, $newTime, json_encode($existsTask));
 	}
 
 	/**
