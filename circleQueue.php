@@ -54,7 +54,7 @@ class CircleQueue
 		# 当前轮询执行的节点
 		$current = $this->redis->get('current.point');
 
-		//相差秒数
+		# 相差秒数
 		$intersect = $time - time();
 		$intersect <= 0 && $this->_exception('Task time is have passed');
 
@@ -74,10 +74,7 @@ class CircleQueue
 		}
 
 		echo 'New Point:'.$newTime.PHP_EOL;
-/*		echo 'Current:'.$current.PHP_EOL;
-		echo '<pre>';
-		    print_r($newTask);
-*/
+
 	    $existsTask = json_decode($this->redis->hGet($this->name, $newTime));
 		$existsTask[] = $newTask;
 		$this->redis->hSet($this->name, $newTime, json_encode($existsTask));
